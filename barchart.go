@@ -59,7 +59,10 @@ func (b *barChartRenderer) Destroy() {
 func (b *barChartRenderer) Layout(size fyne.Size) {
 	titleSize := b.titleLbl.MinSize()
 	//ySize := b.yLbl.MinSize()
-	xSize := b.xLbl.MinSize()
+	xSize := fyne.NewSize(0, 0)
+	if b.xLbl.Visible() {
+		xSize = b.xLbl.MinSize()
+	}
 
 	titleX := size.Width/2 - titleSize.Width/2
 	titlePos := fyne.NewPos(titleX, theme.Padding())
