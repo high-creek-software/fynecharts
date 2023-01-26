@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	defaultBarWidth = 25
+	defaultBarWidth  = 25
+	defaultMinHeight = 100
 )
 
 type BarChart struct {
@@ -22,7 +23,8 @@ type BarChart struct {
 	labels []string
 	data   []float64
 
-	barWidth float32
+	barWidth  float32
+	minHeight float32
 }
 
 func (b *BarChart) CreateRenderer() fyne.WidgetRenderer {
@@ -50,13 +52,17 @@ func (b *BarChart) SetBarWidth(w float32) {
 	b.barWidth = w
 }
 
+func (b *BarChart) SetMinHeight(h float32) {
+	b.minHeight = h
+}
+
 func (b *BarChart) SetXLabel(xlbl string) {
 	b.xTitle = xlbl
 	b.Refresh()
 }
 
 func NewBarChart(canvas fyne.Canvas, title string, labels []string, data []float64) *BarChart {
-	bc := &BarChart{canvas: canvas, title: title, labels: labels, data: data, barWidth: defaultBarWidth}
+	bc := &BarChart{canvas: canvas, title: title, labels: labels, data: data, barWidth: defaultBarWidth, minHeight: defaultMinHeight}
 	bc.ExtendBaseWidget(bc)
 	bc.Refresh()
 
@@ -105,25 +111,24 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 	xPos := fyne.NewPos(xLblX, size.Height-xSize.Height-theme.Padding())
 	b.xLbl.Move(xPos)
 
-	xCellWidth := b.xLblMax.Width + 2
-	totalWidth := xCellWidth * float32(len(b.barChart.labels))
-	xOffset := size.Width/2 - totalWidth/2
+	xOffset := float32(0)
 
 	xSepY := size.Height - xSize.Height - b.xLblMax.Height - 5
 	b.xSeparator.Position1 = fyne.NewPos(xOffset, xSepY)
-	b.xSeparator.Position2 = fyne.NewPos(xOffset+totalWidth, xSepY)
+	b.xSeparator.Position2 = fyne.NewPos(size.Width-theme.Padding(), xSepY)
 
 	b.ySeparator.Position1 = fyne.NewPos(xOffset, xSepY)
 	b.ySeparator.Position2 = fyne.NewPos(xOffset, titleSize.Height+2*theme.Padding())
 
 	availableHeight := size.Height - titleSize.Height - theme.Padding() - xSize.Height - b.xLblMax.Height - theme.Padding()
+	columnWidth := (size.Width - (2 * theme.Padding())) / float32(len(b.barChart.labels))
 
 	if len(b.labels) > 0 {
 		for idx := range b.barChart.labels {
 			lbl := b.labels[idx]
 			lblSize := lbl.MinSize()
-			xCellOffset := float32(idx) * xCellWidth
-			lblPos := fyne.NewPos(xOffset+xCellOffset+b.xLblMax.Width/2-lblSize.Width/2,
+			xCellOffset := float32(idx) * columnWidth
+			lblPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-lblSize.Width/2,
 				size.Height-2*theme.Padding()-xSize.Height-float32(lblSize.Height))
 			lbl.Move(lblPos)
 		}
@@ -134,8 +139,8 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 			rect := b.data[idx]
 			scale := float32((d - b.dataMin) / (b.dataMax - b.dataMin))
 			rect.Resize(fyne.NewSize(b.barChart.barWidth, availableHeight*scale))
-			xCellOffset := float32(idx) * xCellWidth
-			rectPos := fyne.NewPos(xOffset+xCellOffset+b.xLblMax.Width/2-rect.Size().Width/2,
+			xCellOffset := float32(idx) * columnWidth
+			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-rect.Size().Width/2,
 				size.Height-xSize.Height-(availableHeight*scale)-b.xLblMax.Height-theme.Padding())
 			rect.Move(rectPos)
 		}
@@ -159,7 +164,7 @@ func (b *barChartRenderer) MinSize() fyne.Size {
 
 	xCellWidth := b.xLblMax.Width + 2
 	return fyne.NewSize(float32(len(b.barChart.labels))*xCellWidth,
-		titleSize.Height+xLblSize.Height+b.xLblMax.Height+(b.barScale*float32(b.dataMax))+float32(paddingCount)*theme.Padding())
+		titleSize.Height+xLblSize.Height+b.xLblMax.Height+float32(paddingCount)*theme.Padding()+b.barChart.minHeight)
 }
 
 func (b *barChartRenderer) Objects() []fyne.CanvasObject {

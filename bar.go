@@ -24,7 +24,7 @@ func (b *bar) MouseIn(event *desktop.MouseEvent) {
 		return
 	}
 	if b.canvas != nil {
-		lbl := widget.NewLabel(fmt.Sprintf("%f", b.value))
+		lbl := widget.NewLabel(fmt.Sprintf("%.1f", b.value))
 		b.pop = widget.NewPopUp(lbl, b.canvas)
 		b.pop.ShowAtPosition(event.AbsolutePosition.SubtractXY(0, lbl.MinSize().Height+10))
 	}
