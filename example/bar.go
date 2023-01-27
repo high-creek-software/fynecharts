@@ -14,7 +14,7 @@ func main() {
 	chart := fynecharts.NewBarChart(window.Canvas(),
 		"Simple Bar Chart",
 		[]string{"One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"},
-		[]float64{25, 34, 45, 10, 20, 32, 86, 10, 2, 42},
+		[]float64{25, 34, 45, 10, 20, 32, 56, 10, 2, 42},
 	)
 
 	window.SetContent(chart)
