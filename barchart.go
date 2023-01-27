@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	defaultBarWidth  = 25
-	defaultMinHeight = 100
+	defaultBarWidth           = 25
+	defaultMinHeight          = 100
+	defaultSuggestedTickCount = 4
 )
 
 type BarChart struct {
@@ -26,8 +27,9 @@ type BarChart struct {
 	labels []string
 	data   []float64
 
-	barWidth  float32
-	minHeight float32
+	barWidth           float32
+	minHeight          float32
+	suggestedTickCount int
 }
 
 func (b *BarChart) CreateRenderer() fyne.WidgetRenderer {
@@ -64,8 +66,12 @@ func (b *BarChart) SetXLabel(xlbl string) {
 	b.Refresh()
 }
 
+func (b *BarChart) UpdateSuggestedTickCount(count int) {
+	b.suggestedTickCount = count
+}
+
 func NewBarChart(canvas fyne.Canvas, title string, labels []string, data []float64) *BarChart {
-	bc := &BarChart{canvas: canvas, title: title, labels: labels, data: data, barWidth: defaultBarWidth, minHeight: defaultMinHeight}
+	bc := &BarChart{canvas: canvas, title: title, labels: labels, data: data, barWidth: defaultBarWidth, minHeight: defaultMinHeight, suggestedTickCount: defaultSuggestedTickCount}
 	bc.ExtendBaseWidget(bc)
 	bc.Refresh()
 
@@ -89,8 +95,6 @@ type barChartRenderer struct {
 	xLblMax fyne.Size
 
 	yAxis axis
-
-	barWidth float32
 }
 
 func (b *barChartRenderer) Destroy() {
@@ -115,7 +119,7 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 	xPos := fyne.NewPos(xLblX, size.Height-xSize.Height-theme.Padding())
 	b.xLbl.Move(xPos)
 
-	xOffset := float32(theme.Padding() + b.yLblMax.Width)
+	xOffset := theme.Padding() + b.yLblMax.Width
 
 	xSepY := size.Height - xSize.Height - b.xLblMax.Height - 5
 	b.xSeparator.Position1 = fyne.NewPos(xOffset, xSepY)
@@ -126,17 +130,6 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 
 	availableHeight := size.Height - titleSize.Height - theme.Padding() - xSize.Height - b.xLblMax.Height - theme.Padding()
 	columnWidth := (size.Width - xOffset - theme.Padding()) / float32(len(b.barChart.labels))
-
-	if len(b.barChart.labels) > 0 {
-		for idx := range b.barChart.labels {
-			lbl := b.xLabels[idx]
-			lblSize := lbl.MinSize()
-			xCellOffset := float32(idx) * columnWidth
-			lblPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-lblSize.Width/2,
-				size.Height-2*theme.Padding()-xSize.Height-lblSize.Height)
-			lbl.Move(lblPos)
-		}
-	}
 
 	if len(b.yLabelPositions) > 0 {
 		for lbl, y := range b.yLabelPositions {
@@ -151,6 +144,17 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 		}
 	}
 
+	if len(b.barChart.labels) > 0 {
+		for idx := range b.barChart.labels {
+			lbl := b.xLabels[idx]
+			lblSize := lbl.MinSize()
+			xCellOffset := float32(idx) * columnWidth
+			lblPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-lblSize.Width/2,
+				size.Height-2*theme.Padding()-xSize.Height-lblSize.Height)
+			lbl.Move(lblPos)
+		}
+	}
+
 	if len(b.data) > 0 {
 		for idx, d := range b.barChart.data {
 			bar := b.data[idx]
@@ -158,7 +162,7 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 			bar.Resize(fyne.NewSize(b.barChart.barWidth, availableHeight*scale))
 			xCellOffset := float32(idx) * columnWidth
 			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-bar.Size().Width/2,
-				size.Height-xSize.Height-(availableHeight*scale)-b.xLblMax.Height-theme.Padding())
+				size.Height-xSize.Height-b.xLblMax.Height-theme.Padding()-(availableHeight*scale))
 			bar.Move(rectPos)
 		}
 	}
@@ -243,24 +247,27 @@ func (b *barChartRenderer) Refresh() {
 	}
 	b.yAxis.dataRange = b.yAxis.max - b.yAxis.min
 
+	for _, lbl := range b.xLabels {
+		lbl.Hide()
+	}
 	for idx := range b.barChart.labels {
 		var lbl *widget.Label
 		if idx >= len(b.xLabels) {
 			lbl = widget.NewLabel(b.barChart.labels[idx])
-			b.xLblMax = b.xLblMax.Max(lbl.MinSize())
 			b.xLabels = append(b.xLabels, lbl)
 		} else {
 			lbl = b.xLabels[idx]
 			lbl.SetText(b.barChart.labels[idx])
-			b.xLblMax = b.xLblMax.Max(lbl.MinSize())
 		}
+		lbl.Show()
+		b.xLblMax = b.xLblMax.Max(lbl.MinSize())
 	}
 
 	maps.Clear(b.yLabelPositions)
 	for _, lbl := range b.yLabels {
 		lbl.Hide()
 	}
-	tickLabels, _, _, _, err := generateTicks(b.yAxis.min, b.yAxis.max, 4, containmentWithinData, defaultQ(), defaultWeights(), defaultLegibility)
+	tickLabels, _, _, _, err := generateTicks(b.yAxis.min, b.yAxis.max, b.barChart.suggestedTickCount, containmentWithinData, defaultQ(), defaultWeights(), defaultLegibility)
 	if err != nil {
 		log.Println("error generating ticks")
 		return
