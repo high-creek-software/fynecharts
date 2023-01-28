@@ -6,7 +6,6 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"log"
 )
 
 type bar struct {
@@ -18,7 +17,6 @@ type bar struct {
 }
 
 func (b *bar) MouseIn(event *desktop.MouseEvent) {
-	log.Println("Mouse in", event)
 	if b.pop != nil {
 		return
 	}
@@ -34,7 +32,6 @@ func (b *bar) MouseMoved(event *desktop.MouseEvent) {
 }
 
 func (b *bar) MouseOut() {
-	log.Println("Mouse out")
 	if b.pop == nil {
 		return
 	}
