@@ -13,10 +13,12 @@ func main() {
 
 	chart := fynecharts.NewTimeSeriesChart(window.Canvas(),
 		"Simple Time Series",
-		[]string{"Jan. 12, 2023", "Jan. 13, 2023", "Jan. 14, 2023", "Jan. 15, 2023", "Jan. 16, 2023", "Jan. 17, 2023"},
-		[]float64{12.3, 19.8, 9.8, 13.5, 56, 4},
+		[]string{"Jan. 12, 2023", "Jan. 13, 2023", "Jan. 14, 2023", "Jan. 15, 2023", "Jan. 16, 2023", "Jan. 17, 2023", "Jan. 18, 2023"},
+		[]float64{12.3, 19.8, 9.8, 13.5, 56, 87, 74},
 	)
-	//chart.SetXLabel("Days with stuff")
+	chart.UpdateSuggestedTickCount(8)
+	chart.SetXLabel("Days with stuff")
+	chart.SetYLabel("Amount of stuff")
 	window.SetContent(chart)
 	window.ShowAndRun()
 }

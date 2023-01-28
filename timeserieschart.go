@@ -63,12 +63,12 @@ func (t *timeSeriesChartRenderer) Destroy() {
 func (t *timeSeriesChartRenderer) Layout(size fyne.Size) {
 	t.baseChartRenderer.Layout(size)
 
-	xSize := t.xLabelSize()
 	xOffset := t.xOffset()
 
 	availableHeight := t.availableHeight(size)
 	columnWidth := t.columnWidth(size, xOffset)
 
+	reqBottom := t.requiredBottomHeight()
 	if len(t.data) > 0 {
 		var previousPos *fyne.Position
 		for idx, d := range t.timeSeriesChart.data {
@@ -77,7 +77,7 @@ func (t *timeSeriesChartRenderer) Layout(size fyne.Size) {
 			dt.Resize(fyne.NewSize(t.timeSeriesChart.dotDiameter, t.timeSeriesChart.dotDiameter))
 			xCellOffset := float32(idx) * columnWidth
 			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-dt.Size().Width/2,
-				size.Height-xSize.Height-t.xLblMax.Height-theme.Padding()-(availableHeight*scale)-dt.Size().Height/2)
+				size.Height-reqBottom-(availableHeight*scale)-dt.Size().Height/2)
 			dt.Move(rectPos)
 			if previousPos != nil {
 				l := t.connectLines[idx-1]

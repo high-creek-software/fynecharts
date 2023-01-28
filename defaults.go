@@ -11,3 +11,7 @@ const (
 func defaultHoverFormat(input float64) string {
 	return fmt.Sprintf("%.2f", input)
 }
+
+func defaultTickFormat(input float64) string {
+	return fmt.Sprintf("%.1f", input)
+}

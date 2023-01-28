@@ -33,14 +33,6 @@ func (b *BarChart) SetBarWidth(w float32) {
 	b.barWidth = w
 }
 
-func (b *BarChart) SetMinHeight(h float32) {
-	b.minHeight = h
-}
-
-func (b *BarChart) UpdateSuggestedTickCount(count int) {
-	b.suggestedTickCount = count
-}
-
 func (b *BarChart) UpdateHoverFormat(f func(float642 float64) string) {
 	b.hoverFormat = f
 }
@@ -72,12 +64,12 @@ func (b *barChartRenderer) Destroy() {
 func (b *barChartRenderer) Layout(size fyne.Size) {
 	b.baseChartRenderer.Layout(size)
 
-	xSize := b.xLabelSize()
 	xOffset := b.xOffset()
 
 	availableHeight := b.availableHeight(size)
 	columnWidth := b.columnWidth(size, xOffset)
 
+	reqBottom := b.requiredBottomHeight()
 	if len(b.data) > 0 {
 		for idx, d := range b.barChart.data {
 			bar := b.data[idx]
@@ -85,7 +77,7 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 			bar.Resize(fyne.NewSize(b.barChart.barWidth, availableHeight*scale))
 			xCellOffset := float32(idx) * columnWidth
 			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-bar.Size().Width/2,
-				size.Height-xSize.Height-b.xLblMax.Height-theme.Padding()-(availableHeight*scale))
+				size.Height-reqBottom-(availableHeight*scale))
 			bar.Move(rectPos)
 		}
 	}

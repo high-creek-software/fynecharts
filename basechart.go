@@ -1,7 +1,6 @@
 package fynecharts
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
@@ -21,17 +20,21 @@ type BaseChart struct {
 	suggestedTickCount int
 
 	minHeight float32
+
+	tickFormat func(input float64) string
 }
 
 func (b *BaseChart) CreateRenderer() fyne.WidgetRenderer {
 	titleLbl := canvas.NewText(b.title, theme.ForegroundColor())
 	titleLbl.TextSize = theme.TextSize() + 6
 	titleLbl.Hide()
-	yLbl := widget.NewLabel(b.yTitle)
+	yLbl := canvas.NewText(b.yTitle, theme.ForegroundColor())
+	yLbl.TextSize = theme.TextSize() + 3
 	yLbl.Hide()
 	ySep := canvas.NewLine(theme.ForegroundColor())
 	ySep.StrokeWidth = 2
-	xLbl := widget.NewLabel(b.xTitle)
+	xLbl := canvas.NewText(b.xTitle, theme.ForegroundColor())
+	xLbl.TextSize = theme.TextSize() + 3
 	xLbl.Hide()
 	xSep := canvas.NewLine(theme.ForegroundColor())
 	xSep.StrokeWidth = 2
@@ -47,23 +50,40 @@ func (b *BaseChart) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func newBaseChart(title string, xLabels []string, minHeight float32, suggestedTickCount int) *BaseChart {
-	bc := &BaseChart{title: title, xLabels: xLabels, minHeight: minHeight, suggestedTickCount: suggestedTickCount}
+	bc := &BaseChart{title: title, xLabels: xLabels, minHeight: minHeight, suggestedTickCount: suggestedTickCount, tickFormat: defaultTickFormat}
 
 	return bc
 }
 
-func (b *BaseChart) SetXLabel(xlbl string) {
-	b.xTitle = xlbl
+func (b *BaseChart) SetXLabel(xLbl string) {
+	b.xTitle = xLbl
 	b.Refresh()
+}
+
+func (b *BaseChart) SetYLabel(yLbl string) {
+	b.yTitle = yLbl
+	b.Refresh()
+}
+
+func (b *BaseChart) SetMinHeight(h float32) {
+	b.minHeight = h
+}
+
+func (b *BaseChart) UpdateSuggestedTickCount(count int) {
+	b.suggestedTickCount = count
+}
+
+func (b *BaseChart) UpdateTickFormat(f func(input float64) string) {
+	b.tickFormat = f
 }
 
 type baseChartRenderer struct {
 	baseChart *BaseChart
 
 	titleLbl   *canvas.Text
-	yLbl       *widget.Label
+	yLbl       *canvas.Text
 	ySeparator *canvas.Line
-	xLbl       *widget.Label
+	xLbl       *canvas.Text
 	xSeparator *canvas.Line
 
 	yLabels         []*widget.Label
@@ -87,20 +107,23 @@ func (b *baseChartRenderer) Layout(size fyne.Size) {
 	b.titleLbl.Move(titlePos)
 	b.titleLbl.Resize(titleSize)
 
-	xSize := b.xLabelSize()
+	yPos := fyne.NewPos(theme.Padding(), titleSize.Height+2*theme.Padding())
+	b.yLbl.Move(yPos)
 
+	xSize := b.xLabelSize()
 	xLblX := size.Width/2 - xSize.Width/2
 	xPos := fyne.NewPos(xLblX, size.Height-xSize.Height-theme.Padding())
 	b.xLbl.Move(xPos)
 
 	xOffset := b.xOffset()
 
-	xSepY := size.Height - xSize.Height - b.xLblMax.Height - 5
+	reqBottom := b.requiredBottomHeight()
+	xSepY := size.Height - reqBottom
 	b.xSeparator.Position1 = fyne.NewPos(xOffset, xSepY)
 	b.xSeparator.Position2 = fyne.NewPos(size.Width-theme.Padding(), xSepY)
 
 	b.ySeparator.Position1 = fyne.NewPos(xOffset, xSepY)
-	b.ySeparator.Position2 = fyne.NewPos(xOffset, titleSize.Height+2*theme.Padding())
+	b.ySeparator.Position2 = fyne.NewPos(xOffset, b.requiredTopHeight())
 
 	availableHeight := b.availableHeight(size)
 	columnWidth := b.columnWidth(size, xOffset)
@@ -109,7 +132,7 @@ func (b *baseChartRenderer) Layout(size fyne.Size) {
 		for lbl, y := range b.yLabelPositions {
 			lblSize := lbl.MinSize()
 			scale := b.yAxis.normalize(y)
-			pos := fyne.NewPos(0, size.Height-xSize.Height-b.xLblMax.Height-theme.Padding()-(availableHeight*scale)-lblSize.Height/2)
+			pos := fyne.NewPos(0, size.Height-reqBottom-(availableHeight*scale)-lblSize.Height/2)
 			lbl.Move(pos)
 		}
 	}
@@ -134,8 +157,26 @@ func (b *baseChartRenderer) xLabelSize() fyne.Size {
 	return xSize
 }
 
+func (b *baseChartRenderer) yLabelSize() fyne.Size {
+	ySize := fyne.NewSize(0, 0)
+	if b.yLbl.Visible() {
+		ySize = b.yLbl.MinSize()
+	}
+	return ySize
+}
+
+func (b *baseChartRenderer) titleLabelSize() fyne.Size {
+	tSize := fyne.NewSize(0, 0)
+	if b.titleLbl.Visible() {
+		tSize = b.titleLbl.MinSize()
+	}
+	return tSize
+}
+
 func (b *baseChartRenderer) xOffset() float32 {
-	return b.yLblMax.Width
+	//ySize := b.yLabelSize()
+	//return fyne.Max(b.yLblMax.Width, ySize.Width+2*theme.Padding())
+	return b.yLblMax.Width + theme.Padding()
 }
 
 func (b *baseChartRenderer) MinSize() fyne.Size {
@@ -146,8 +187,38 @@ func (b *baseChartRenderer) columnWidth(size fyne.Size, xOffset float32) float32
 	return (size.Width - xOffset - theme.Padding()) / float32(len(b.baseChart.xLabels))
 }
 
+func (b *baseChartRenderer) requiredTopHeight() float32 {
+	paddingCount := 0
+	titleSize := b.titleLabelSize()
+	if titleSize.Height > 0 {
+		paddingCount += 3
+	}
+	ySize := b.yLabelSize()
+	if ySize.Height > 0 {
+		paddingCount += 2
+	}
+
+	return titleSize.Height + ySize.Height + float32(paddingCount)*theme.Padding()
+}
+
+func (b *baseChartRenderer) requiredBottomHeight() float32 {
+	paddingCount := 0
+	xSize := b.xLabelSize()
+	if xSize.Height > 0 {
+		paddingCount += 2
+	}
+
+	if b.xLblMax.Height > 0 {
+		paddingCount++
+	}
+
+	return xSize.Height + b.xLblMax.Height + float32(paddingCount)*theme.Padding()
+}
+
 func (b *baseChartRenderer) availableHeight(size fyne.Size) float32 {
-	return size.Height - b.titleLbl.MinSize().Height - theme.Padding() - b.xLbl.MinSize().Height - b.xLblMax.Height - theme.Padding()
+	topHeight := b.requiredTopHeight()
+	bottomHeight := b.requiredBottomHeight()
+	return size.Height - topHeight - bottomHeight
 }
 
 func (b *baseChartRenderer) Objects() []fyne.CanvasObject {
@@ -181,14 +252,16 @@ func (b *baseChartRenderer) Refresh() {
 	}
 
 	if b.baseChart.yTitle != "" {
-		b.yLbl.SetText(b.baseChart.yTitle)
+		b.yLbl.Text = b.baseChart.yTitle
+		b.yLbl.Refresh()
 		b.yLbl.Show()
 	} else {
 		b.yLbl.Hide()
 	}
 
 	if b.baseChart.xTitle != "" {
-		b.xLbl.SetText(b.baseChart.xTitle)
+		b.xLbl.Text = b.baseChart.xTitle
+		b.xLbl.Refresh()
 		b.xLbl.Show()
 	} else {
 		b.xLbl.Hide()
@@ -223,14 +296,14 @@ func (b *baseChartRenderer) Refresh() {
 	for idx, tl := range tickLabels {
 		var lbl *widget.Label
 		if idx >= len(b.yLabels) {
-			lbl = widget.NewLabel(fmt.Sprintf("%.1f", tl))
+			lbl = widget.NewLabel(b.baseChart.tickFormat(tl))
 			b.yLabels = append(b.yLabels, lbl)
 		} else {
 			lbl = b.yLabels[idx]
-			lbl.SetText(fmt.Sprintf("%.1f", tl))
+			lbl.SetText(b.baseChart.tickFormat(tl))
 		}
 		lbl.Show()
-		b.yLblMax = b.xLblMax.Max(lbl.MinSize())
+		b.yLblMax = b.yLblMax.Max(lbl.MinSize())
 		b.yLabelPositions[lbl] = tl
 	}
 
