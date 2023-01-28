@@ -1,7 +1,6 @@
 package fynecharts
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/driver/desktop"
@@ -14,8 +13,8 @@ type bar struct {
 	widget.BaseWidget
 	canvas fyne.Canvas
 
-	value float64
-	pop   *widget.PopUp
+	displayValue string
+	pop          *widget.PopUp
 }
 
 func (b *bar) MouseIn(event *desktop.MouseEvent) {
@@ -24,7 +23,7 @@ func (b *bar) MouseIn(event *desktop.MouseEvent) {
 		return
 	}
 	if b.canvas != nil {
-		lbl := widget.NewLabel(fmt.Sprintf("%.1f", b.value))
+		lbl := widget.NewLabel(b.displayValue)
 		b.pop = widget.NewPopUp(lbl, b.canvas)
 		b.pop.ShowAtPosition(event.AbsolutePosition.SubtractXY(0, lbl.MinSize().Height+10))
 	}
@@ -54,8 +53,8 @@ func (b *bar) CreateRenderer() fyne.WidgetRenderer {
 	}
 }
 
-func newBar(canvas fyne.Canvas, value float64) *bar {
-	b := &bar{canvas: canvas, value: value}
+func newBar(canvas fyne.Canvas, value string) *bar {
+	b := &bar{canvas: canvas, displayValue: value}
 	b.ExtendBaseWidget(b)
 
 	return b

@@ -1,54 +1,30 @@
 package fynecharts
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
-	"golang.org/x/exp/maps"
-	"log"
 	"math"
 )
 
-const (
-	defaultBarWidth           = 25
-	defaultMinHeight          = 100
-	defaultSuggestedTickCount = 4
-)
-
 type BarChart struct {
-	widget.BaseWidget
+	*BaseChart
 	canvas fyne.Canvas
 
-	title  string
-	yTitle string
-	xTitle string
-	labels []string
-	data   []float64
+	data []float64
 
-	barWidth           float32
-	minHeight          float32
-	suggestedTickCount int
+	barWidth float32
+
+	hoverFormat func(float64) string
 }
 
 func (b *BarChart) CreateRenderer() fyne.WidgetRenderer {
-	titleLbl := widget.NewLabel(b.title)
-	titleLbl.Hide()
-	yLbl := widget.NewLabel(b.yTitle)
-	yLbl.Hide()
-	ySep := canvas.NewLine(theme.ForegroundColor())
-	ySep.StrokeWidth = 2
-	xLbl := widget.NewLabel(b.xTitle)
-	xLbl.Hide()
-	xSep := canvas.NewLine(theme.ForegroundColor())
-	xSep.StrokeWidth = 2
+	bcr := b.BaseChart.CreateRenderer().(*baseChartRenderer)
 
-	return &barChartRenderer{barChart: b, titleLbl: titleLbl, yLbl: yLbl, xLbl: xLbl, xSeparator: xSep, ySeparator: ySep, yLabelPositions: make(map[*widget.Label]float64)}
+	return &barChartRenderer{barChart: b, baseChartRenderer: bcr}
 }
 
 func (b *BarChart) UpdateData(labels []string, data []float64) {
-	b.labels = labels
+	b.xLabels = labels
 	b.data = data
 	b.Refresh()
 }
@@ -61,17 +37,21 @@ func (b *BarChart) SetMinHeight(h float32) {
 	b.minHeight = h
 }
 
-func (b *BarChart) SetXLabel(xlbl string) {
-	b.xTitle = xlbl
-	b.Refresh()
-}
-
 func (b *BarChart) UpdateSuggestedTickCount(count int) {
 	b.suggestedTickCount = count
 }
 
+func (b *BarChart) UpdateHoverFormat(f func(float642 float64) string) {
+	b.hoverFormat = f
+}
+
 func NewBarChart(canvas fyne.Canvas, title string, labels []string, data []float64) *BarChart {
-	bc := &BarChart{canvas: canvas, title: title, labels: labels, data: data, barWidth: defaultBarWidth, minHeight: defaultMinHeight, suggestedTickCount: defaultSuggestedTickCount}
+	bc := &BarChart{BaseChart: newBaseChart(title, labels, defaultMinHeight, defaultSuggestedTickCount),
+		canvas:      canvas,
+		data:        data,
+		barWidth:    defaultBarWidth,
+		hoverFormat: defaultHoverFormat,
+	}
 	bc.ExtendBaseWidget(bc)
 	bc.Refresh()
 
@@ -79,22 +59,10 @@ func NewBarChart(canvas fyne.Canvas, title string, labels []string, data []float
 }
 
 type barChartRenderer struct {
-	barChart   *BarChart
-	titleLbl   *widget.Label
-	yLbl       *widget.Label
-	ySeparator *canvas.Line
-	xLbl       *widget.Label
-	xSeparator *canvas.Line
+	*baseChartRenderer
+	barChart *BarChart
 
-	yLabels         []*widget.Label
-	yLabelPositions map[*widget.Label]float64
-	xLabels         []*widget.Label
-	data            []*bar
-
-	yLblMax fyne.Size
-	xLblMax fyne.Size
-
-	yAxis axis
+	data []*bar
 }
 
 func (b *barChartRenderer) Destroy() {
@@ -102,58 +70,13 @@ func (b *barChartRenderer) Destroy() {
 }
 
 func (b *barChartRenderer) Layout(size fyne.Size) {
+	b.baseChartRenderer.Layout(size)
 
-	titleSize := b.titleLbl.MinSize()
-	//ySize := b.yLbl.MinSize()
-	xSize := fyne.NewSize(0, 0)
-	if b.xLbl.Visible() {
-		xSize = b.xLbl.MinSize()
-	}
+	xSize := b.xLabelSize()
+	xOffset := b.xOffset()
 
-	titleX := size.Width/2 - titleSize.Width/2
-	titlePos := fyne.NewPos(titleX, theme.Padding())
-	b.titleLbl.Move(titlePos)
-	b.titleLbl.Resize(titleSize)
-
-	xLblX := size.Width/2 - xSize.Width/2
-	xPos := fyne.NewPos(xLblX, size.Height-xSize.Height-theme.Padding())
-	b.xLbl.Move(xPos)
-
-	xOffset := theme.Padding() + b.yLblMax.Width
-
-	xSepY := size.Height - xSize.Height - b.xLblMax.Height - 5
-	b.xSeparator.Position1 = fyne.NewPos(xOffset, xSepY)
-	b.xSeparator.Position2 = fyne.NewPos(size.Width-theme.Padding(), xSepY)
-
-	b.ySeparator.Position1 = fyne.NewPos(xOffset, xSepY)
-	b.ySeparator.Position2 = fyne.NewPos(xOffset, titleSize.Height+2*theme.Padding())
-
-	availableHeight := size.Height - titleSize.Height - theme.Padding() - xSize.Height - b.xLblMax.Height - theme.Padding()
-	columnWidth := (size.Width - xOffset - theme.Padding()) / float32(len(b.barChart.labels))
-
-	if len(b.yLabelPositions) > 0 {
-		for lbl, y := range b.yLabelPositions {
-			lblSize := lbl.MinSize()
-			scale := b.yAxis.normalize(y)
-			pos := fyne.NewPos(0, size.Height-xSize.Height-b.xLblMax.Height-theme.Padding()-(availableHeight*scale)-lblSize.Height/2)
-			if pos.Y < titleSize.Height+2*theme.Padding() {
-				lbl.Hide()
-				continue
-			}
-			lbl.Move(pos)
-		}
-	}
-
-	if len(b.barChart.labels) > 0 {
-		for idx := range b.barChart.labels {
-			lbl := b.xLabels[idx]
-			lblSize := lbl.MinSize()
-			xCellOffset := float32(idx) * columnWidth
-			lblPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-lblSize.Width/2,
-				size.Height-2*theme.Padding()-xSize.Height-lblSize.Height)
-			lbl.Move(lblPos)
-		}
-	}
+	availableHeight := b.availableHeight(size)
+	columnWidth := b.columnWidth(size, xOffset)
 
 	if len(b.data) > 0 {
 		for idx, d := range b.barChart.data {
@@ -183,108 +106,30 @@ func (b *barChartRenderer) MinSize() fyne.Size {
 	}
 
 	xCellWidth := b.xLblMax.Width + 2
-	return fyne.NewSize(float32(len(b.barChart.labels))*xCellWidth,
+	return fyne.NewSize(float32(len(b.barChart.xLabels))*xCellWidth,
 		titleSize.Height+xLblSize.Height+b.xLblMax.Height+float32(paddingCount)*theme.Padding()+b.barChart.minHeight)
 }
 
 func (b *barChartRenderer) Objects() []fyne.CanvasObject {
-	cos := []fyne.CanvasObject{b.titleLbl, b.yLbl, b.xLbl}
-	for _, lbl := range b.yLabels {
-		cos = append(cos, lbl)
-	}
-
-	for _, lbl := range b.xLabels {
-		cos = append(cos, lbl)
-	}
-
+	cos := b.baseChartRenderer.Objects()
 	for _, d := range b.data {
 		cos = append(cos, d)
 	}
-
-	if b.xSeparator != nil {
-		cos = append(cos, b.xSeparator)
-	}
-
-	if b.ySeparator != nil {
-		cos = append(cos, b.ySeparator)
-	}
-
 	return cos
 }
 
 func (b *barChartRenderer) Refresh() {
-	if b.barChart.title != "" {
-		b.titleLbl.SetText(b.barChart.title)
-		b.titleLbl.Show()
-	} else {
-		b.titleLbl.Hide()
-	}
-
-	if b.barChart.yTitle != "" {
-		b.yLbl.SetText(b.barChart.yTitle)
-		b.yLbl.Show()
-	} else {
-		b.yLbl.Hide()
-	}
-
-	if b.barChart.xTitle != "" {
-		b.xLbl.SetText(b.barChart.xTitle)
-		b.xLbl.Show()
-	} else {
-		b.xLbl.Hide()
-	}
-
 	b.yAxis = axis{normalizer: linearNormalizer{}}
-
 	for idx, datum := range b.barChart.data {
 		b.yAxis.max = math.Max(b.yAxis.max, datum)
 		b.yAxis.min = math.Min(b.yAxis.min, datum)
 		if idx >= len(b.data) {
-			b.data = append(b.data, newBar(b.barChart.canvas, datum))
+			b.data = append(b.data, newBar(b.barChart.canvas, b.barChart.hoverFormat(datum)))
 		} else {
-			b.data[idx].value = datum
+			b.data[idx].displayValue = b.barChart.hoverFormat(datum)
 		}
 	}
 	b.yAxis.dataRange = b.yAxis.max - b.yAxis.min
 
-	for _, lbl := range b.xLabels {
-		lbl.Hide()
-	}
-	for idx := range b.barChart.labels {
-		var lbl *widget.Label
-		if idx >= len(b.xLabels) {
-			lbl = widget.NewLabel(b.barChart.labels[idx])
-			b.xLabels = append(b.xLabels, lbl)
-		} else {
-			lbl = b.xLabels[idx]
-			lbl.SetText(b.barChart.labels[idx])
-		}
-		lbl.Show()
-		b.xLblMax = b.xLblMax.Max(lbl.MinSize())
-	}
-
-	maps.Clear(b.yLabelPositions)
-	for _, lbl := range b.yLabels {
-		lbl.Hide()
-	}
-	tickLabels, _, _, _, err := generateTicks(b.yAxis.min, b.yAxis.max, b.barChart.suggestedTickCount, containmentWithinData, defaultQ(), defaultWeights(), defaultLegibility)
-	if err != nil {
-		log.Println("error generating ticks")
-		return
-	}
-	log.Println("Tick Labels:", tickLabels)
-	for idx, tl := range tickLabels {
-		var lbl *widget.Label
-		if idx >= len(b.yLabels) {
-			lbl = widget.NewLabel(fmt.Sprintf("%.1f", tl))
-			b.yLabels = append(b.yLabels, lbl)
-		} else {
-			lbl = b.yLabels[idx]
-			lbl.SetText(fmt.Sprintf("%.1f", tl))
-		}
-		lbl.Show()
-		b.yLblMax = b.xLblMax.Max(lbl.MinSize())
-		b.yLabelPositions[lbl] = tl
-	}
-
+	b.baseChartRenderer.Refresh()
 }

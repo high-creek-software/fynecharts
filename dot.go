@@ -3,6 +3,7 @@ package fynecharts
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -11,8 +12,32 @@ type dot struct {
 	widget.BaseWidget
 	canvas fyne.Canvas
 
-	value float64
-	pop   *widget.PopUp
+	displayValue string
+	pop          *widget.PopUp
+}
+
+func (d *dot) MouseIn(event *desktop.MouseEvent) {
+	if d.canvas != nil {
+		lbl := widget.NewLabel(d.displayValue)
+		d.pop = widget.NewPopUp(lbl, d.canvas)
+		d.pop.ShowAtPosition(event.AbsolutePosition.SubtractXY(0, lbl.MinSize().Height+10))
+	}
+}
+
+func (d *dot) MouseMoved(event *desktop.MouseEvent) {
+
+}
+
+func (d *dot) MouseOut() {
+	if d.pop == nil {
+		return
+	}
+	d.pop.Hide()
+	d.pop = nil
+}
+
+func (d *dot) Cursor() desktop.Cursor {
+	return desktop.PointerCursor
 }
 
 func (d *dot) CreateRenderer() fyne.WidgetRenderer {
@@ -22,8 +47,8 @@ func (d *dot) CreateRenderer() fyne.WidgetRenderer {
 	}
 }
 
-func newDot(canvas fyne.Canvas, value float64) *dot {
-	d := &dot{canvas: canvas, value: value}
+func newDot(canvas fyne.Canvas, value string) *dot {
+	d := &dot{canvas: canvas, displayValue: value}
 	d.ExtendBaseWidget(d)
 
 	return d
