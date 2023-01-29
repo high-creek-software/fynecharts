@@ -13,30 +13,32 @@ type bar struct {
 	canvas fyne.Canvas
 
 	displayValue string
-	pop          *widget.PopUp
+	showValue    bool
+	pos          fyne.Position
 }
 
 func (b *bar) MouseIn(event *desktop.MouseEvent) {
-	if b.pop != nil {
-		return
-	}
-	if b.canvas != nil {
-		lbl := widget.NewLabel(b.displayValue)
-		b.pop = widget.NewPopUp(lbl, b.canvas)
-		b.pop.ShowAtPosition(event.AbsolutePosition.SubtractXY(0, lbl.MinSize().Height+10))
-	}
+	b.showValue = true
+	b.pos = event.Position
+	b.Refresh()
+	b.canvas.Refresh(b)
 }
 
 func (b *bar) MouseMoved(event *desktop.MouseEvent) {
-
+	b.pos = event.Position
+	b.Refresh()
+	b.canvas.Refresh(b)
 }
 
 func (b *bar) MouseOut() {
-	if b.pop == nil {
-		return
-	}
-	b.pop.Hide()
-	b.pop = nil
+	b.showValue = false
+	b.Refresh()
+	b.canvas.Refresh(b)
+}
+
+func (b *bar) updateDisplayValue(v string) {
+	b.displayValue = v
+	b.Refresh()
 }
 
 func (b *bar) Cursor() desktop.Cursor {
@@ -45,14 +47,17 @@ func (b *bar) Cursor() desktop.Cursor {
 
 func (b *bar) CreateRenderer() fyne.WidgetRenderer {
 	return &barRenderer{
-		b:    b,
-		rect: canvas.NewRectangle(theme.PrimaryColor()),
+		b:       b,
+		rect:    canvas.NewRectangle(theme.PrimaryColor()),
+		wrapper: canvas.NewRectangle(theme.BackgroundColor()),
+		display: widget.NewLabel(b.displayValue),
 	}
 }
 
 func newBar(canvas fyne.Canvas, value string) *bar {
 	b := &bar{canvas: canvas, displayValue: value}
 	b.ExtendBaseWidget(b)
+	b.Refresh()
 
 	return b
 }
@@ -60,7 +65,9 @@ func newBar(canvas fyne.Canvas, value string) *bar {
 type barRenderer struct {
 	b *bar
 
-	rect *canvas.Rectangle
+	rect    *canvas.Rectangle
+	wrapper *canvas.Rectangle
+	display *widget.Label
 }
 
 func (b *barRenderer) Destroy() {
@@ -69,16 +76,28 @@ func (b *barRenderer) Destroy() {
 
 func (b *barRenderer) Layout(size fyne.Size) {
 	b.rect.Resize(size)
+	b.wrapper.Resize(b.display.MinSize())
+	b.display.Resize(b.display.MinSize())
 }
 
 func (b *barRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(0, 0)
+	return b.rect.MinSize()
 }
 
 func (b *barRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{b.rect}
+	return []fyne.CanvasObject{b.rect, b.wrapper, b.display}
 }
 
 func (b *barRenderer) Refresh() {
+	if b.b.showValue {
+		b.display.SetText(b.b.displayValue)
+		b.display.Move(b.b.pos.SubtractXY(0, b.display.MinSize().Height))
+		b.wrapper.Move(b.b.pos.SubtractXY(0, b.display.MinSize().Height))
 
+		b.display.Show()
+		b.wrapper.Show()
+	} else {
+		b.display.Hide()
+		b.wrapper.Hide()
+	}
 }

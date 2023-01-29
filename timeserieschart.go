@@ -46,6 +46,7 @@ func NewTimeSeriesChart(canvas fyne.Canvas, title string, labels []string, data 
 
 func (t *TimeSeriesChart) UpdateHoverFormat(f func(float642 float64) string) {
 	t.hoverFormat = f
+	t.Refresh()
 }
 
 type timeSeriesChartRenderer struct {
@@ -78,13 +79,13 @@ func (t *timeSeriesChartRenderer) Layout(size fyne.Size) {
 			xCellOffset := float32(idx) * columnWidth
 			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-dt.Size().Width/2,
 				size.Height-reqBottom-(availableHeight*scale)-dt.Size().Height/2)
-			dt.Move(rectPos)
 			if previousPos != nil {
 				l := t.connectLines[idx-1]
 				l.Position1 = (*previousPos).AddXY(dt.Size().Width/2, dt.Size().Height/2)
 				l.Position2 = rectPos.AddXY(dt.Size().Width/2, dt.Size().Height/2)
 			}
 			previousPos = &rectPos
+			dt.Move(rectPos)
 		}
 	}
 }
@@ -121,19 +122,28 @@ func (t *timeSeriesChartRenderer) Objects() []fyne.CanvasObject {
 
 func (t *timeSeriesChartRenderer) Refresh() {
 	t.yAxis = axis{normalizer: linearNormalizer{}}
+	for _, ln := range t.connectLines {
+		ln.Hide()
+	}
+	for _, dt := range t.data {
+		dt.Hide()
+	}
 	for idx, datum := range t.timeSeriesChart.data {
 		t.yAxis.max = math.Max(t.yAxis.max, datum)
 		t.yAxis.min = math.Min(t.yAxis.min, datum)
 		if idx >= len(t.data) {
 			t.data = append(t.data, newDot(t.timeSeriesChart.canvas, t.timeSeriesChart.hoverFormat(datum)))
 		} else {
-			t.data[idx].displayValue = t.timeSeriesChart.hoverFormat(datum)
+			t.data[idx].updateDisplayValue(t.timeSeriesChart.hoverFormat(datum))
+			t.data[idx].Show()
 		}
 
 		if idx >= len(t.connectLines) {
 			l := canvas.NewLine(theme.PrimaryColor())
 			l.StrokeWidth = 2
 			t.connectLines = append(t.connectLines, l)
+		} else {
+			t.connectLines[idx].Show()
 		}
 	}
 	t.yAxis.dataRange = t.yAxis.max - t.yAxis.min

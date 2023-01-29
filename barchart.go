@@ -72,13 +72,13 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 	reqBottom := b.requiredBottomHeight()
 	if len(b.data) > 0 {
 		for idx, d := range b.barChart.data {
-			bar := b.data[idx]
+			br := b.data[idx]
 			scale := b.yAxis.normalize(d)
-			bar.Resize(fyne.NewSize(b.barChart.barWidth, availableHeight*scale))
+			br.Resize(fyne.NewSize(b.barChart.barWidth, availableHeight*scale))
 			xCellOffset := float32(idx) * columnWidth
-			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-bar.Size().Width/2,
+			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-br.Size().Width/2,
 				size.Height-reqBottom-(availableHeight*scale))
-			bar.Move(rectPos)
+			br.Move(rectPos)
 		}
 	}
 }
@@ -112,13 +112,18 @@ func (b *barChartRenderer) Objects() []fyne.CanvasObject {
 
 func (b *barChartRenderer) Refresh() {
 	b.yAxis = axis{normalizer: linearNormalizer{}}
+	for _, br := range b.data {
+		br.Hide()
+	}
 	for idx, datum := range b.barChart.data {
 		b.yAxis.max = math.Max(b.yAxis.max, datum)
 		b.yAxis.min = math.Min(b.yAxis.min, datum)
 		if idx >= len(b.data) {
-			b.data = append(b.data, newBar(b.barChart.canvas, b.barChart.hoverFormat(datum)))
+			br := newBar(b.barChart.canvas, b.barChart.hoverFormat(datum))
+			b.data = append(b.data, br)
 		} else {
-			b.data[idx].displayValue = b.barChart.hoverFormat(datum)
+			b.data[idx].updateDisplayValue(b.barChart.hoverFormat(datum))
+			b.data[idx].Show()
 		}
 	}
 	b.yAxis.dataRange = b.yAxis.max - b.yAxis.min
