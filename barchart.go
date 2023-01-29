@@ -15,6 +15,7 @@ type BarChart struct {
 	barWidth float32
 
 	hoverFormat func(float64) string
+	onTouched   func(idx int)
 }
 
 func (b *BarChart) CreateRenderer() fyne.WidgetRenderer {
@@ -31,10 +32,16 @@ func (b *BarChart) UpdateData(labels []string, data []float64) {
 
 func (b *BarChart) SetBarWidth(w float32) {
 	b.barWidth = w
+	b.Refresh()
 }
 
 func (b *BarChart) UpdateHoverFormat(f func(float642 float64) string) {
 	b.hoverFormat = f
+}
+
+func (b *BarChart) UpdateOnTouched(f func(idx int)) {
+	b.onTouched = f
+	b.Refresh()
 }
 
 func NewBarChart(canvas fyne.Canvas, title string, labels []string, data []float64) *BarChart {
@@ -120,9 +127,11 @@ func (b *barChartRenderer) Refresh() {
 		b.yAxis.min = math.Min(b.yAxis.min, datum)
 		if idx >= len(b.data) {
 			br := newBar(b.barChart.canvas, b.barChart.hoverFormat(datum))
+			br.updateOnTouched(b.barChart.onTouched, idx)
 			b.data = append(b.data, br)
 		} else {
 			b.data[idx].updateDisplayValue(b.barChart.hoverFormat(datum))
+			b.data[idx].updateOnTouched(b.barChart.onTouched, idx)
 			b.data[idx].Show()
 		}
 	}

@@ -15,6 +15,19 @@ type bar struct {
 	displayValue string
 	showValue    bool
 	pos          fyne.Position
+	idx          int
+	onTouched    func(idx int)
+}
+
+func (b *bar) Tapped(event *fyne.PointEvent) {
+	if b.onTouched != nil {
+		b.onTouched(b.idx)
+	}
+}
+
+func (b *bar) updateOnTouched(f func(idx int), idx int) {
+	b.onTouched = f
+	b.idx = idx
 }
 
 func (b *bar) MouseIn(event *desktop.MouseEvent) {

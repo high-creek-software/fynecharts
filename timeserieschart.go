@@ -49,6 +49,12 @@ func (t *TimeSeriesChart) UpdateHoverFormat(f func(float642 float64) string) {
 	t.Refresh()
 }
 
+func (t *TimeSeriesChart) UpdateData(lbls []string, data []float64) {
+	t.xLabels = lbls
+	t.data = data
+	t.Refresh()
+}
+
 type timeSeriesChartRenderer struct {
 	*baseChartRenderer
 	timeSeriesChart *TimeSeriesChart
@@ -111,11 +117,11 @@ func (t *timeSeriesChartRenderer) MinSize() fyne.Size {
 
 func (t *timeSeriesChartRenderer) Objects() []fyne.CanvasObject {
 	cos := t.baseChartRenderer.Objects()
-	for _, d := range t.data {
-		cos = append(cos, d)
-	}
 	for _, l := range t.connectLines {
 		cos = append(cos, l)
+	}
+	for _, d := range t.data {
+		cos = append(cos, d)
 	}
 	return cos
 }
