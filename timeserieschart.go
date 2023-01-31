@@ -55,6 +55,11 @@ func (t *TimeSeriesChart) UpdateData(lbls []string, data []float64) {
 	t.Refresh()
 }
 
+func (t *TimeSeriesChart) UpdateDotDiameter(diameter float32) {
+	t.dotDiameter = diameter
+	t.Refresh()
+}
+
 type timeSeriesChartRenderer struct {
 	*baseChartRenderer
 	timeSeriesChart *TimeSeriesChart
