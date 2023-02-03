@@ -104,8 +104,9 @@ func (b *barChartRenderer) MinSize() fyne.Size {
 		paddingCount++
 	}
 
-	xCellWidth := b.xLblMax.Width + 2
-	return fyne.NewSize(float32(len(b.barChart.xLabels))*xCellWidth,
+	xLblWidth := b.xLblMax.Width + 2
+	xCellWidth := b.barChart.barWidth + 2
+	return fyne.NewSize(float32(len(b.barChart.xLabels))*fyne.Max(xLblWidth, xCellWidth),
 		titleSize.Height+xLblSize.Height+b.xLblMax.Height+float32(paddingCount)*theme.Padding()+b.barChart.minHeight)
 }
 
