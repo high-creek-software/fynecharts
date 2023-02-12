@@ -267,9 +267,10 @@ func (b *baseChartRenderer) Refresh() {
 		b.xLbl.Hide()
 	}
 
-	for _, lbl := range b.xLabels {
-		lbl.Hide()
-	}
+	//for _, lbl := range b.xLabels {
+	//	lbl.Hide()
+	//}
+	b.xLabels = nil
 	for idx := range b.baseChart.xLabels {
 		var lbl *widget.Label
 		if idx >= len(b.xLabels) {
@@ -284,9 +285,10 @@ func (b *baseChartRenderer) Refresh() {
 	}
 
 	maps.Clear(b.yLabelPositions)
-	for _, lbl := range b.yLabels {
-		lbl.Hide()
-	}
+	//for _, lbl := range b.yLabels {
+	//	lbl.Hide()
+	//}
+	b.yLabels = nil
 	tickLabels, _, _, _, err := generateTicks(b.yAxis.min, b.yAxis.max, b.baseChart.suggestedTickCount, containmentContainData, defaultQ(), defaultWeights(), defaultLegibility)
 	if err != nil {
 		log.Println("error generating ticks")

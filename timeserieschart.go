@@ -133,29 +133,36 @@ func (t *timeSeriesChartRenderer) Objects() []fyne.CanvasObject {
 
 func (t *timeSeriesChartRenderer) Refresh() {
 	t.yAxis = axis{normalizer: linearNormalizer{}}
-	for _, ln := range t.connectLines {
-		ln.Hide()
-	}
-	for _, dt := range t.data {
-		dt.Hide()
-	}
-	for idx, datum := range t.timeSeriesChart.data {
+	/*** Commenting this out here for now, as reuse was keeping the layout from updating on data change. ***/
+	//for _, ln := range t.connectLines {
+	//	ln.Hide()
+	//}
+	//for _, dt := range t.data {
+	//	dt.Hide()
+	//}
+	t.connectLines = nil
+	t.data = nil
+	for _, datum := range t.timeSeriesChart.data {
 		t.yAxis.max = math.Max(t.yAxis.max, datum)
 		t.yAxis.min = math.Min(t.yAxis.min, datum)
-		if idx >= len(t.data) {
-			t.data = append(t.data, newDot(t.timeSeriesChart.canvas, t.timeSeriesChart.hoverFormat(datum)))
-		} else {
-			t.data[idx].updateDisplayValue(t.timeSeriesChart.hoverFormat(datum))
-			t.data[idx].Show()
-		}
+		t.data = append(t.data, newDot(t.timeSeriesChart.canvas, t.timeSeriesChart.hoverFormat(datum)))
+		/*** Commenting this out here for now, as reuse was keeping the layout from updating on data change. ***/
+		//if idx >= len(t.data) {
+		//	t.data = append(t.data, newDot(t.timeSeriesChart.canvas, t.timeSeriesChart.hoverFormat(datum)))
+		//} else {
+		//	t.data[idx].updateDisplayValue(t.timeSeriesChart.hoverFormat(datum))
+		//	t.data[idx].Show()
+		//}
 
-		if idx >= len(t.connectLines) {
-			l := canvas.NewLine(theme.PrimaryColor())
-			l.StrokeWidth = 2
-			t.connectLines = append(t.connectLines, l)
-		} else {
-			t.connectLines[idx].Show()
-		}
+		l := canvas.NewLine(theme.PrimaryColor())
+		l.StrokeWidth = 2
+		t.connectLines = append(t.connectLines, l)
+		/*** Commenting this out here for now, as reuse was keeping the layout from updating on data change. ***/
+		//if idx >= len(t.connectLines) {
+		//	l := canvas.NewLine(theme.PrimaryColor())
+		//	l.StrokeWidth = 2
+		//	t.connectLines = append(t.connectLines, l)
+		//}
 	}
 	t.yAxis.dataRange = t.yAxis.max - t.yAxis.min
 

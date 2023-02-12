@@ -81,7 +81,8 @@ func (b *barChartRenderer) Layout(size fyne.Size) {
 		for idx, d := range b.barChart.data {
 			br := b.data[idx]
 			scale := b.yAxis.normalize(d)
-			br.Resize(fyne.NewSize(b.barChart.barWidth, availableHeight*scale))
+			brSize := fyne.NewSize(b.barChart.barWidth, availableHeight*scale)
+			br.Resize(brSize)
 			xCellOffset := float32(idx) * columnWidth
 			rectPos := fyne.NewPos(xOffset+xCellOffset+columnWidth/2-br.Size().Width/2,
 				size.Height-reqBottom-(availableHeight*scale))
@@ -120,21 +121,29 @@ func (b *barChartRenderer) Objects() []fyne.CanvasObject {
 
 func (b *barChartRenderer) Refresh() {
 	b.yAxis = axis{normalizer: linearNormalizer{}}
-	for _, br := range b.data {
-		br.Hide()
-	}
+	/*** Commenting this out here for now, as reuse was keeping the layout from updating on data change. ***/
+	//for _, br := range b.data {
+	//	br.Hide()
+	//}
+	b.data = nil
 	for idx, datum := range b.barChart.data {
 		b.yAxis.max = math.Max(b.yAxis.max, datum)
 		b.yAxis.min = math.Min(b.yAxis.min, datum)
-		if idx >= len(b.data) {
-			br := newBar(b.barChart.canvas, b.barChart.hoverFormat(datum))
-			br.updateOnTouched(b.barChart.onTouched, idx)
-			b.data = append(b.data, br)
-		} else {
-			b.data[idx].updateDisplayValue(b.barChart.hoverFormat(datum))
-			b.data[idx].updateOnTouched(b.barChart.onTouched, idx)
-			b.data[idx].Show()
-		}
+
+		br := newBar(b.barChart.canvas, b.barChart.hoverFormat(datum))
+		br.updateOnTouched(b.barChart.onTouched, idx)
+		b.data = append(b.data, br)
+
+		/*** Commenting this out here for now, as reuse was keeping the layout from updating on data change. ***/
+		//if idx >= len(b.data) {
+		//	br := newBar(b.barChart.canvas, b.barChart.hoverFormat(datum))
+		//	br.updateOnTouched(b.barChart.onTouched, idx)
+		//	b.data = append(b.data, br)
+		//} else {
+		//	b.data[idx].updateDisplayValue(b.barChart.hoverFormat(datum))
+		//	b.data[idx].updateOnTouched(b.barChart.onTouched, idx)
+		//	b.data[idx].Show()
+		//}
 	}
 	b.yAxis.dataRange = b.yAxis.max - b.yAxis.min
 
