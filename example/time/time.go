@@ -1,10 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 	"github.com/high-creek-software/fynecharts"
+	"math/rand"
 )
+
+var labels = []string{}
+var data = []float64{}
 
 func main() {
 	app := app.New()
@@ -13,12 +20,40 @@ func main() {
 
 	chart := fynecharts.NewTimeSeriesChart(window.Canvas(),
 		"Simple Time Series",
-		[]string{"Jan. 12, 2023", "Jan. 13, 2023", "Jan. 14, 2023", "Jan. 15, 2023", "Jan. 16, 2023", "Jan. 17, 2023", "Jan. 18, 2023"},
-		[]float64{12.3, 19.8, 9.8, 13.5, 56, 87, 74},
+		labels,
+		data,
 	)
 	chart.UpdateSuggestedTickCount(8)
 	chart.SetXLabel("Days with stuff")
 	chart.SetYLabel("Amount of stuff")
-	window.SetContent(chart)
+
+	removeBtn := widget.NewButton("Remove", func() {
+		if len(data) == 0 {
+			return
+		}
+		data = data[1:]
+		labels = labels[1:]
+		chart.UpdateData(labels, data)
+	})
+	addBtn := widget.NewButton("Add", func() {
+		r := genRandom()
+		data = append(data, r)
+		labels = append(labels, fmt.Sprintf("%d", len(data)))
+		chart.UpdateData(labels, data)
+	})
+	grid := container.NewGridWithColumns(2, removeBtn, addBtn)
+	recomputeBtn := widget.NewButton("Recompute", func() {
+		chart.UpdateData([]string{}, []float64{})
+		for idx := range data {
+			data[idx] = genRandom()
+		}
+		chart.UpdateData(labels, data)
+	})
+
+	window.SetContent(container.NewBorder(grid, recomputeBtn, nil, nil, chart))
 	window.ShowAndRun()
+}
+
+func genRandom() float64 {
+	return 10 + rand.Float64()*(100-10)
 }
