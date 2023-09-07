@@ -5,7 +5,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"golang.org/x/exp/maps"
 	"log"
 )
 
@@ -284,7 +283,7 @@ func (b *baseChartRenderer) Refresh() {
 		b.xLblMax = b.xLblMax.Max(lbl.MinSize())
 	}
 
-	maps.Clear(b.yLabelPositions)
+	clear(b.yLabelPositions)
 	//for _, lbl := range b.yLabels {
 	//	lbl.Hide()
 	//}
